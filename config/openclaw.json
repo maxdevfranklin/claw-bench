@@ -25,7 +25,16 @@
         "api": "openai-completions",
         "apiKey": "${CLAWBENCH_LLM_API_KEY}",
         "models": [
-          {"id": "glm-5", "name": "GLM-5"}
+          {
+            "id": "glm-5",
+            "name": "GLM-5",
+            "cost": {
+              "input": 1.00,
+              "output": 3.20,
+              "cacheRead": 0.10,
+              "cacheWrite": 0.10
+            }
+          }
         ]
       }
     }

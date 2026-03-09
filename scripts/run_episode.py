@@ -467,6 +467,9 @@ def main():
         print(f"    Input:       {usage_data.get('input_tokens', 0):,} tokens")
         print(f"    Output:      {usage_data.get('output_tokens', 0):,} tokens")
         print(f"    Cache read:  {usage_data.get('cache_read_tokens', 0):,} tokens")
+        cost_usd = usage_data.get('total_cost_usd', 0.0)
+        if cost_usd:
+            print(f"    Cost:        ${cost_usd:.4f}")
         print(f"    Model:       {CLAWBENCH_MODEL}")
 
     print(f"\nAssistant Response:")

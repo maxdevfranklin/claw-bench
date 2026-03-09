@@ -49,6 +49,7 @@ from clawbench.runner import (
     DEFAULT_OPENCLAW_URL, DEFAULT_OPENCLAW_TOKEN, DEFAULT_MOCK_TOOLS_URL, DEFAULT_MODEL,
     wait_for_services, send_message, get_tool_calls, get_all_requests,
     reset_scenario, setup_workspace, load_all_scenarios,
+    extract_usage, get_session_usage,
 )
 
 # ---------------------------------------------------------------------------
@@ -259,8 +260,9 @@ def run_single(scenario: dict, variant: str) -> dict:
     time.sleep(1)
 
     # Send message
+    session_key = f"clawbench-{name}-{variant}-{int(time.time() * 1000)}"
     t0 = time.time()
-    raw_response = send_message(OPENCLAW_URL, OPENCLAW_TOKEN, prompt, model=CLAWBENCH_MODEL)
+    raw_response = send_message(OPENCLAW_URL, OPENCLAW_TOKEN, prompt, model=CLAWBENCH_MODEL, session_key=session_key)
     elapsed = time.time() - t0
 
     # Collect tool data
@@ -274,6 +276,13 @@ def run_single(scenario: dict, variant: str) -> dict:
 
     failed_requests = [r for r in all_reqs.get("requests", []) if not r.get("success")]
     summary = all_reqs.get("summary", {})
+
+    # Extract usage/cost
+    usage = extract_usage(raw_response)
+    if not usage or not usage.get("total_cost_usd"):
+        session_usage = get_session_usage(OPENCLAW_URL, OPENCLAW_TOKEN, session_key)
+        if session_usage:
+            usage = session_usage
 
     # Detect error hints
     error_patterns = ["technical issue", "encountered an error", "unable to", "couldn't", "failed to", "try again"]
@@ -302,6 +311,7 @@ def run_single(scenario: dict, variant: str) -> dict:
         "failed_requests": failed_requests,
         "response_has_error_hints": has_errors,
         "raw_response": raw_response,
+        "usage": usage,
     }
 
     # Score the episode
@@ -315,10 +325,18 @@ def run_single(scenario: dict, variant: str) -> dict:
     # Print quick status
     status_icon = "✅" if result["status"] == "ok" and not has_errors else "⚠️" if has_errors else "❌"
     score_str = f", score={result['score']['score']:.0%}" if result["score"].get("score") is not None else ""
+    cost_str = ""
+    if usage:
+        in_tok = usage.get("input_tokens", 0)
+        out_tok = usage.get("output_tokens", 0)
+        cost_usd = usage.get("total_cost_usd", 0.0)
+        cost_str = f", {in_tok:,}in/{out_tok:,}out"
+        if cost_usd:
+            cost_str += f" ${cost_usd:.4f}"
     print(f"\n  {status_icon} {name}/{variant}: {len(tool_calls)} tool calls, "
           f"{summary.get('failed', 0)} failures, "
           f"{len(assistant_message)} chars, "
-          f"{elapsed:.1f}s{score_str}")
+          f"{elapsed:.1f}s{score_str}{cost_str}")
 
     if result["score"].get("score") is not None:
         print(format_score_summary(result["score"]))
@@ -382,6 +400,7 @@ def save_results(results: list[dict], run_id: str):
             "tool_calls_by_type": r.get("tool_calls_by_type", {}),
             "score": score_data.get("score"),
             "score_detail": score_data.get("by_category"),
+            "usage": r.get("usage"),
         })
 
     # Summary markdown
@@ -618,16 +637,22 @@ Examples:
     print(f"\n{'='*80}")
     print(f"  BATCH SUMMARY — {len(results)} episodes")
     print(f"{'='*80}")
-    print(f"{'Scenario':<20} {'Variant':<10} {'Status':<6} {'Score':<7} {'Tools':<6} {'Fail':<5} {'Resp':<7} {'Time':<6}")
-    print(f"{'-'*20} {'-'*10} {'-'*6} {'-'*7} {'-'*6} {'-'*5} {'-'*7} {'-'*6}")
+    print(f"{'Scenario':<20} {'Variant':<10} {'Status':<6} {'Score':<7} {'Tools':<6} {'Fail':<5} {'Resp':<7} {'Time':<6} {'In Tok':<8} {'Out Tok':<8} {'Cost':<8}")
+    print(f"{'-'*20} {'-'*10} {'-'*6} {'-'*7} {'-'*6} {'-'*5} {'-'*7} {'-'*6} {'-'*8} {'-'*8} {'-'*8}")
     for r in results:
         status = "OK" if r.get("status") == "ok" and not r.get("response_has_error_hints") else "WARN" if r.get("response_has_error_hints") else "ERR"
         score = r.get("score", {})
         score_str = f"{score['score']:.0%}" if score.get("score") is not None else "—"
+        u = r.get("usage") or {}
+        in_tok = f"{u.get('input_tokens', 0):,}" if u else "—"
+        out_tok = f"{u.get('output_tokens', 0):,}" if u else "—"
+        cost_usd = u.get("total_cost_usd", 0) if u else 0
+        cost_str = f"${cost_usd:.4f}" if cost_usd else "—"
         print(f"{r.get('scenario','?'):<20} {r.get('variant','?'):<10} {status:<6} "
               f"{score_str:<7} "
               f"{r.get('tool_calls_total', '?'):<6} {r.get('requests_failed', '?'):<5} "
-              f"{r.get('response_length', '?'):<7} {r.get('elapsed_seconds', '?'):<6}")
+              f"{r.get('response_length', '?'):<7} {r.get('elapsed_seconds', '?'):<6} "
+              f"{in_tok:<8} {out_tok:<8} {cost_str:<8}")
 
     # Stop services
     if args.stop:
