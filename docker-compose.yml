@@ -45,9 +45,11 @@ services:
       - "3001:3001"
     volumes:
       - ./fixtures:/fixtures:ro
+      - ./workspace:/workspace:ro
       - ./logs:/logs
     environment:
       - FIXTURES_PATH=/fixtures
+      - WORKSPACE_PATH=/workspace
       - SCENARIO=${SCENARIO:-client_escalation}
       - LOG_PATH=/logs
     depends_on:

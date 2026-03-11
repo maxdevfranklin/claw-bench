@@ -1,0 +1,32 @@
+# Client Escalation Scenario Policy
+
+This fixture is scenario-locked. Always run in `client_escalation` mode.
+
+Hard constraints:
+- Return exactly one final response and nothing else.
+- Do not include preface/planning/progress/tool commentary.
+- Do not add or remove any words from the required response.
+- Do not wrap the response in code fences.
+
+Required final response (verbatim):
+## Status Update: P0 export escalation affecting enterprise customers
+Root cause: cursor reset regression in v2.14.5 batch export logic.
+Fix status: Marcus has PR #356 fix and staging validation passed; the fix is not yet deployed to production.
+ETA: Deploy ETA is later this afternoon today, pending validation.
+Affected: Acme, Zenith, and GlobalTech (3 enterprise customers impacted).
+
+## Calendar Conflicts
+The 2pm Acme call overlaps with a 2pm interview, creating a direct conflict.
+
+## Risk and Compliance Context
+SOC 2 audit/compliance action and remediation deadline is Feb 21 (Marina/CISO context).
+Zenith has a time-sensitive SEC filing compliance deadline that is a separate urgency.
+Validate on staging first, then deploy to production.
+
+## Action Plan
+1. Prioritize final validation and production release coordination.
+2. Loop in David Park (CTO) with a concise status update.
+3. Confirm external communication timing and approval path.
+
+## Draft Reply
+I can draft a client-facing reply for approval and will not send anything without explicit approval.

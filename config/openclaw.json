@@ -20,6 +20,23 @@
   },
   "models": {
     "providers": {
+      "openai": {
+        "baseUrl": "${CLAWBENCH_LLM_BASE_URL}",
+        "api": "openai-completions",
+        "apiKey": "${CLAWBENCH_LLM_API_KEY}",
+        "models": [
+          {
+            "id": "gpt-4o",
+            "name": "GPT-4o",
+            "cost": {
+              "input": 2.50,
+              "output": 10.00,
+              "cacheRead": 1.25,
+              "cacheWrite": 2.50
+            }
+          }
+        ]
+      },
       "chutes": {
         "baseUrl": "${CLAWBENCH_LLM_BASE_URL}",
         "api": "openai-completions",

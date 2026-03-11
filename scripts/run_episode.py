@@ -192,6 +192,20 @@ def run_episode(
         model=CLAWBENCH_MODEL, session_key=session_key,
     )
 
+    # #region agent log
+    _log_path = "/home/kingtao/Desktop/traj/.cursor/debug-a75847.log"
+    _rkeys = list(response.keys()) if isinstance(response, dict) else []
+    _has_err = "error" in response if isinstance(response, dict) else False
+    _choices = response.get("choices", []) if isinstance(response, dict) else []
+    _clen = 0
+    if _choices and len(_choices) > 0:
+        _msg = (_choices[0] or {}).get("message") or {}
+        _cnt = _msg.get("content")
+        _clen = len(_cnt) if _cnt else 0
+    with open(_log_path, "a") as _f:
+        _f.write(json.dumps({"sessionId": "a75847", "hypothesisId": "H2,H3,H5", "location": "run_episode.py:run_episode", "message": "after send_message", "data": {"response_keys": _rkeys, "has_error": _has_err, "error_preview": str(response.get("error", ""))[:200] if _has_err else None, "len_choices": len(_choices), "first_content_len": _clen}, "timestamp": time.time() * 1000}) + "\n")
+    # #endregion
+
     # Extract token usage from response (inline x_openclaw_usage field)
     usage = extract_usage(response)
 
@@ -204,6 +218,14 @@ def run_episode(
     # Get tool calls
     tool_calls = get_tool_calls(MOCK_TOOLS_URL)
     all_reqs = get_all_requests(MOCK_TOOLS_URL)
+
+    # #region agent log
+    _log_path = "/home/kingtao/Desktop/traj/.cursor/debug-a75847.log"
+    _sum = all_reqs.get("summary", {}) if isinstance(all_reqs, dict) else {}
+    _reqs = all_reqs.get("requests", []) if isinstance(all_reqs, dict) else []
+    with open(_log_path, "a") as _f:
+        _f.write(json.dumps({"sessionId": "a75847", "hypothesisId": "H4", "location": "run_episode.py:run_episode", "message": "after get_all_requests", "data": {"summary_total": _sum.get("total"), "summary_success": _sum.get("success"), "summary_failed": _sum.get("failed"), "requests_len": len(_reqs)}, "timestamp": time.time() * 1000}) + "\n")
+    # #endregion
 
     # Extract assistant response
     assistant_message = ""
@@ -335,6 +357,7 @@ def main():
         setup_workspace_with_templates(scenario_config, args.variant, user_context)
 
     if args.wait:
+        print(f"  Connecting to mock-tools={MOCK_TOOLS_URL!r} openclaw={OPENCLAW_URL!r}")
         if not wait_for_services(MOCK_TOOLS_URL, OPENCLAW_URL):
             print("ERROR: Services not ready")
             sys.exit(1)

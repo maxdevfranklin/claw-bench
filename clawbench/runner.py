@@ -47,6 +47,8 @@ def wait_for_services(mock_url: str, openclaw_url: str, timeout: int = 120) -> b
     start = time.time()
     mock_ready = False
     openclaw_ready = False
+    mock_err_printed = False
+    openclaw_err_printed = False
 
     while time.time() - start < timeout:
         if not mock_ready:
@@ -56,7 +58,10 @@ def wait_for_services(mock_url: str, openclaw_url: str, timeout: int = 120) -> b
                     health = r.json()
                     print(f"  Mock tools: OK ({health.get('tools_available', '?')} tools, scenario={health.get('scenario', '?')})")
                     mock_ready = True
-            except httpx.RequestError:
+            except httpx.RequestError as e:
+                if not mock_err_printed:
+                    mock_err_printed = True
+                    print(f"  (mock-tools: {type(e).__name__}: {e})")
                 pass
 
         if mock_ready and not openclaw_ready:
@@ -65,7 +70,10 @@ def wait_for_services(mock_url: str, openclaw_url: str, timeout: int = 120) -> b
                 if r.status_code == 200:
                     print("  OpenClaw: OK")
                     openclaw_ready = True
-            except httpx.RequestError:
+            except httpx.RequestError as e:
+                if not openclaw_err_printed:
+                    openclaw_err_printed = True
+                    print(f"  (openclaw: {type(e).__name__}: {e})")
                 pass
 
         if mock_ready and openclaw_ready:
@@ -126,8 +134,26 @@ def send_message(
             stream=False,
             extra_headers=extra_headers if extra_headers else None,
         )
-        return response.model_dump()
+        # #region agent log
+        _d = response.model_dump()
+        _keys = list(_d.keys())
+        _choices = _d.get("choices") or []
+        _first_content_len = 0
+        if _choices and isinstance(_choices[0], dict):
+            _msg = _choices[0].get("message") or {}
+            _content = _msg.get("content")
+            _first_content_len = len(_content) if _content else 0
+        _lp = "/home/kingtao/Desktop/traj/.cursor/debug-a75847.log"
+        with open(_lp, "a") as _f:
+            _f.write(__import__("json").dumps({"sessionId": "a75847", "hypothesisId": "H1", "location": "runner.py:send_message", "message": "send_message success", "data": {"top_level_keys": _keys, "has_choices": "choices" in _d, "len_choices": len(_choices), "first_content_len": _first_content_len}, "timestamp": __import__("time").time() * 1000}) + "\n")
+        # #endregion
+        return _d
     except Exception as e:
+        # #region agent log
+        _lp = "/home/kingtao/Desktop/traj/.cursor/debug-a75847.log"
+        with open(_lp, "a") as _f:
+            _f.write(__import__("json").dumps({"sessionId": "a75847", "hypothesisId": "H1", "location": "runner.py:send_message", "message": "send_message exception", "data": {"error": str(e)[:300]}, "timestamp": __import__("time").time() * 1000}) + "\n")
+        # #endregion
         return {"error": str(e)}
 
 
